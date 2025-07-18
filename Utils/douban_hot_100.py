@@ -6,7 +6,7 @@ from MySqlHelper import MySqlHelper
 
 class DoubanMovieScraper:
     def __init__(self, db_config=None):
-        self.base_url = 'https://movie.douban.com/j/chart/top_list?type=13&interval_id=100%3A90&action='
+        self.base_url = 'https://movie.douban.com/j/chart/top_list?type=13&interval_id=100%3A90&action=&'
         self.headers = {
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
                           '(KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36'

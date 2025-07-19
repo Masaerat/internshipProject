@@ -1,17 +1,21 @@
-import React, { useState } from 'react';
-import { Layout, Menu, InputNumber, Row, Col, message } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Layout, Menu, InputNumber, Row, Col, message, Button, Dropdown, Space } from 'antd';
 import {
   PieChartOutlined,
   GlobalOutlined,
   LineChartOutlined,
   DotChartOutlined,
   UserOutlined,
+  LogoutOutlined,
 } from '@ant-design/icons';
 import TypePieChart from './components/TypePieChart';
 import RegionPieChart from './components/RegionPieChart';
 import ReleaseLineChart from './components/ReleaseLineChart';
 import ScoreScatterChart from './components/ScoreScatterChart';
 import ActorBarChart from './components/ActorBarChart';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import axios from 'axios';
 
 const { Header, Sider, Content } = Layout;
 
@@ -28,6 +32,61 @@ const App: React.FC = () => {
   const [selectedMenu, setSelectedMenu] = useState('type');
   const [rankMin, setRankMin] = useState(1);
   const [rankMax, setRankMax] = useState(100);
+  
+  // 用户状态
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentView, setCurrentView] = useState<'login' | 'register' | 'dashboard'>('login');
+  const [username, setUsername] = useState('');
+  const [token, setToken] = useState('');
+
+  // 检查登录状态
+  useEffect(() => {
+    const savedToken = localStorage.getItem('token');
+    const savedUsername = localStorage.getItem('username');
+    
+    if (savedToken && savedUsername) {
+      setToken(savedToken);
+      setUsername(savedUsername);
+      setIsLoggedIn(true);
+      setCurrentView('dashboard');
+      
+      // 设置axios默认headers
+      axios.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
+    }
+  }, []);
+
+  // 登录成功处理
+  const handleLoginSuccess = (newToken: string, newUsername: string) => {
+    setToken(newToken);
+    setUsername(newUsername);
+    setIsLoggedIn(true);
+    setCurrentView('dashboard');
+    axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+  };
+
+  // 注册成功处理
+  const handleRegisterSuccess = () => {
+    setCurrentView('login');
+    message.info('注册成功，请登录');
+  };
+
+  // 登出处理
+  const handleLogout = async () => {
+    try {
+      await axios.post('/api/logout');
+    } catch (error) {
+      // 即使登出请求失败，也要清除本地状态
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('username');
+      delete axios.defaults.headers.common['Authorization'];
+      setIsLoggedIn(false);
+      setToken('');
+      setUsername('');
+      setCurrentView('login');
+      message.success('已登出');
+    }
+  };
 
   // 切换菜单
   const handleMenuClick = (e: any) => {
@@ -70,6 +129,36 @@ const App: React.FC = () => {
     }
   };
 
+  // 用户下拉菜单
+  const userMenuItems = [
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: '登出',
+      onClick: handleLogout,
+    },
+  ];
+
+  // 如果未登录，显示登录或注册页面
+  if (!isLoggedIn) {
+    if (currentView === 'login') {
+      return (
+        <Login 
+          onLoginSuccess={handleLoginSuccess}
+          onSwitchToRegister={() => setCurrentView('register')}
+        />
+      );
+    } else {
+      return (
+        <Register 
+          onRegisterSuccess={handleRegisterSuccess}
+          onSwitchToLogin={() => setCurrentView('login')}
+        />
+      );
+    }
+  }
+
+  // 已登录，显示主界面
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider collapsible collapsed={collapsed} onCollapse={setCollapsed}>
@@ -79,7 +168,7 @@ const App: React.FC = () => {
         <Menu theme="dark" mode="inline" selectedKeys={[selectedMenu]} onClick={handleMenuClick} items={menuItems} />
       </Sider>
       <Layout>
-        <Header style={{ background: '#fff', padding: '0 24px' }}>
+        <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Row align="middle" gutter={16}>
             <Col>Rank范围：</Col>
             <Col>
@@ -90,6 +179,15 @@ const App: React.FC = () => {
               <InputNumber min={1} max={100} value={rankMax} onChange={v => handleRankChange('max', v)} />
             </Col>
           </Row>
+          
+          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+            <Button type="text" style={{ display: 'flex', alignItems: 'center' }}>
+              <Space>
+                <UserOutlined />
+                {username}
+              </Space>
+            </Button>
+          </Dropdown>
         </Header>
         <Content style={{ margin: '24px', background: '#fff', padding: 24, minHeight: 360 }}>
           {renderContent()}
@@ -99,89 +197,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
-
-
-
-// import React, { useState } from 'react';
-// import './App.css';
-//
-// function App() {
-//   const [input1, setInput1] = useState('');
-//   const [input2, setInput2] = useState('');
-//   const [input3, setInput3] = useState('');
-//   const [response1, setResponse1] = useState('');
-//   const [response2, setResponse2] = useState('');
-//
-//   // 第一个按钮的GET请求
-//   const handleGetRequest = async () => {
-//     try {
-//       const response = await fetch(`/api/get-example?param=${encodeURIComponent(input1)}`);
-//       const data = await response.text();
-//       setResponse1(data);
-//     } catch (error) {
-//       console.error('Error:', error);
-//       setResponse1('请求失败');
-//     }
-//   };
-//
-//   // 第二个按钮的POST请求
-//   const handlePostRequest = async () => {
-//     try {
-//       const response = await fetch(`api/post-example?param=${encodeURIComponent(input3)}`, {
-//         method: 'POST',
-//         headers: {
-//           'Content-Type': 'application/json',
-//         },
-//         body: JSON.stringify({ bodyParam: input2 }),
-//       });
-//       const data = await response.text();
-//       setResponse2(data);
-//     } catch (error) {
-//       console.error('Error:', error);
-//       setResponse2('请求失败');
-//     }
-//   };
-//
-//   return (
-//     <div className="App">
-//       <header className="App-header">
-//
-//         {/* GET请求部分 */}
-//         <div className="request-section">
-//           <h2>GET请求示例</h2>
-//           <input
-//             type="text"
-//             value={input1}
-//             onChange={(e) => setInput1(e.target.value)}
-//             placeholder="输入GET参数"
-//           />
-//           <button onClick={handleGetRequest}>发送GET请求</button>
-//           <p>响应: {response1}</p>
-//         </div>
-//
-//         {/* POST请求部分 */}
-//         <div className="request-section">
-//           <h2>POST请求示例</h2>
-//           <input
-//             type="text"
-//             value={input2}
-//             onChange={(e) => setInput2(e.target.value)}
-//             placeholder="输入POST body参数"
-//           />
-//           <input
-//             type="text"
-//             value={input3}
-//             onChange={(e) => setInput3(e.target.value)}
-//             placeholder="输入POST URL参数"
-//           />
-//           <button onClick={handlePostRequest}>发送POST请求</button>
-//           <p>响应: {response2}</p>
-//         </div>
-//       </header>
-//     </div>
-//   );
-// }
-//
-// export default App;
-
+export default App; 
